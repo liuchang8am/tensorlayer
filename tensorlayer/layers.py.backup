@@ -979,8 +979,7 @@ class DropoutLayer(Layer):
         #   Tensor("Placeholder_2:0", dtype=float32)
         # print(denoising1)
         #   Tensor("Placeholder_2:0", dtype=float32)
-        # print(self.all_drop[denoising1])
-        #   0.8
+        # print(self.all_drop[denoising1]) #   0.8
         #
         # https://www.tensorflow.org/versions/r0.8/tutorials/mnist/tf/index.html
         # The optional feed_dict argument allows the caller to override the
@@ -5975,6 +5974,21 @@ class MaxoutLayer(Layer):
         self.all_params.extend( [W, b] )
 
 
+
+
+class LC_Layer(Layer):
+	def __init__(
+		self,
+		layer=None,
+		name="LC_Layer",
+	):
+		Layer.__init__(self, name=name)
+		self.inputs = layer.outputs
+		self.outputs = self.inputs*2
+		self.all_layers = list(layer.all_layers)
+		self.all_params = list(layer.all_params)
+		self.all_drop = dict(layer.all_drop)
+		self.all_layers.extend( [self.outputs] )
 
 
 

@@ -318,7 +318,7 @@ def load_imdb_dataset(path='data/imdb/', nb_words=None, skip_top=0,
 
     Examples
     --------
-    >>> X_train, y_train, X_test, y_test = tl.files.load_imdb_dataset(
+    >>> X_train, y_train, X_test, y_test = tl.files.load_imbd_dataset(
     ...                                 nb_words=20000, test_split=0.2)
     >>> print('X_train.shape', X_train.shape)
     ... (20000,)  [[1, 62, 74, ... 1033, 507, 27],[1, 60, 33, ... 13, 1053, 7]..]
@@ -626,36 +626,6 @@ def load_flickr1M_dataset(tag='sky', size=10, path="data/flickr1M", n_threads=50
     images = visualize.read_images(select_images_list, '', n_threads=n_threads, printable=printable)
     return images
 
-def load_cyclegan_dataset(filename='summer2winter_yosemite', path='data/cyclegan'):
-    """Load image data from CycleGAN's database, see `this link <https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/>`_.
-
-    Parameters
-    ------------
-    filename : string
-        The dataset you want, see `this link <https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/>`_.
-    path : string
-        The path that the data is downloaded to, defaults is `data/cyclegan`
-
-    Examples
-    ---------
-    >>> im_train_A, im_train_B, im_test_A, im_test_B = load_cyclegan_dataset(filename='summer2winter_yosemite')
-    """
-    url = 'https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/'
-
-    if folder_exists(path+"/"+filename) is False:
-        print("[*] {} is nonexistent in {}".format(filename, path))
-        maybe_download_and_extract(filename+'.zip', path, url, extract=True)
-        del_file(path+'/'+filename+'.zip')
-
-    def load_image_from_folder(path):
-        path_imgs = load_file_list(path=path, regx='\\.jpg', printable=False)
-        return read_images(path_imgs, path=path, n_threads=10, printable=False)
-    im_train_A = load_image_from_folder(path+"/"+filename+"/trainA")
-    im_train_B = load_image_from_folder(path+"/"+filename+"/trainB")
-    im_test_A = load_image_from_folder(path+"/"+filename+"/testA")
-    im_test_B = load_image_from_folder(path+"/"+filename+"/testB")
-
-    return im_train_A, im_train_B, im_test_A, im_test_B
 
 
 ## Load and save network list npz
@@ -899,7 +869,7 @@ def save_ckpt(sess=None, mode_name='model.ckpt', save_dir='checkpoint', var_list
     if var_list == []:
         var_list = tf.global_variables()
 
-    print("[*] save %s n_params: %d" % (ckpt_file, len(var_list)))
+    print("[*] save %s ckpt n_params: %d" % (ckpt_file, len(var_list)))
 
     if printable:
         for idx, v in enumerate(var_list):
@@ -942,7 +912,7 @@ def load_ckpt(sess=None, mode_name='model.ckpt', save_dir='checkpoint', var_list
     if var_list == []:
         var_list = tf.global_variables()
 
-    print("[*] load %s n_params: %d" % (ckpt_file, len(var_list)))
+    print("[*] load %s ckpt n_params: %d" % (ckpt_file, len(var_list)))
 
     if printable:
         for idx, v in enumerate(var_list):
