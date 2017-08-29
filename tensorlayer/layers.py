@@ -16,6 +16,10 @@ from six.moves import xrange
 import random, warnings
 import copy
 import inspect
+
+# Added by LC
+from roi_pooling.roi_pooling_ops import roi_pooling
+
 # __all__ = [
 #     "Layer",
 #     "DenseLayer",
@@ -5975,25 +5979,32 @@ class MaxoutLayer(Layer):
         self.all_layers.extend( [self.outputs] )
         self.all_params.extend( [W, b] )
 
+class ROIPoolingLayer(Layer):
+    """
+    Region of interest pooling layer
+    input: feature maps on which to perform the pooling operation
+    rois: list of regions of interest in the format (feature map index, upper left, bottom right)
+    pool_width: size of the pooling sections
+    """
+    def __init__(
+        self,
+        #inputs = None,
+        layer = None,
+        rois = None,
+        pool_height = 2,
+        pool_width = 2,
+        name = 'roipooling_layer',
+    ):
+        Layer.__init__(self, name=name)
+        self.inputs = layer.outputs
+        print ("  [TL] ROIPoolingLayer %s: (%d, %d)" % (self.name, pool_height, pool_width))
 
+        self.outputs = roi_pooling(self.inputs, rois, pool_height, pool_width)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        self.all_layers = list(layer.all_layers)
+        self.all_params = list(layer.all_params)
+        self.all_drop = dict(layer.all_drop)
+        self.all_layers.extend( [self.outputs] )
 
 
 

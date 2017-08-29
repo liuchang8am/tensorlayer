@@ -1,1 +1,1 @@
-cp * -r /home/lc/codes/tensorlayer/tensorlayer/
+cp * -r $TL
