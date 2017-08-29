@@ -620,6 +620,7 @@ class EmbeddingInputlayer(Layer):
         self.all_params = [embeddings]
         self.all_drop = {}
 
+
 ## Dense layer
 class DenseLayer(Layer):
     """
