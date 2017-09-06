@@ -1,1 +1,1 @@
-cp * -r $TL
+cp -r *  $TL

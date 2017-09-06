@@ -18,7 +18,7 @@ import copy
 import inspect
 
 # Added by LC
-from roi_pooling.roi_pooling_ops import roi_pooling
+#from roi_pooling.roi_pooling_ops import roi_pooling
 
 # __all__ = [
 #     "Layer",
@@ -5979,33 +5979,101 @@ class MaxoutLayer(Layer):
         self.all_layers.extend( [self.outputs] )
         self.all_params.extend( [W, b] )
 
-class ROIPoolingLayer(Layer):
+#class ROIPoolingLayer(Layer):
+#    """
+#    Region of interest pooling layer
+#    input: feature maps on which to perform the pooling operation
+#    rois: list of regions of interest in the format (feature map index, upper left, bottom right)
+#    pool_width: size of the pooling sections
+#    """
+#    def __init__(
+#        self,
+#        #inputs = None,
+#        layer = None,
+#        rois = None,
+#        pool_height = 2,
+#        pool_width = 2,
+#        name = 'roipooling_layer',
+#    ):
+#        Layer.__init__(self, name=name)
+#        self.inputs = layer.outputs
+#        print ("  [TL] ROIPoolingLayer %s: (%d, %d)" % (self.name, pool_height, pool_width))
+#
+#        self.outputs = roi_pooling(self.inputs, rois, pool_height, pool_width)
+#
+#        self.all_layers = list(layer.all_layers)
+#        self.all_params = list(layer.all_params)
+#        self.all_drop = dict(layer.all_drop)
+#        self.all_layers.extend( [self.outputs] )
+
+class Bilinear_Interpolation_with_Joints(Layer):
     """
-    Region of interest pooling layer
-    input: feature maps on which to perform the pooling operation
-    rois: list of regions of interest in the format (feature map index, upper left, bottom right)
-    pool_width: size of the pooling sections
+    Bilinear interpolation layer
+    bilinear interpolate (x,y) by its adjacent points, values are from last layer's feature map
+    input:
+        featuremap: the feature map used to do interpolation
+        x: point's x coordinate to be interpolated, note: in original image coordinate
+        y: point's y coordinate to be interpolated, note: in original image coordinate
+        down_sample: down_sampling layers num, default is 8, as is after conv4 before pool4 for VGG16
+        points: four points used to interpolate
+    output:
+        bilinear interpolated value for (x,y) based on four points
     """
     def __init__(
-        self,
-        #inputs = None,
-        layer = None,
-        rois = None,
-        pool_height = 2,
-        pool_width = 2,
-        name = 'roipooling_layer',
-    ):
-        Layer.__init__(self, name=name)
-        self.inputs = layer.outputs
-        print ("  [TL] ROIPoolingLayer %s: (%d, %d)" % (self.name, pool_height, pool_width))
+            self,
+            #featuremap = None,
+            layer = None,
+            points = None, # ndarray, all joints RGB points
+            down_sample = 8, # default downsampling layers, that is, after conv4 before pool4 for VGG16
+            #points = None,
+            name = 'bilinear_interpolation_layer'
+            ):
 
-        self.outputs = roi_pooling(self.inputs, rois, pool_height, pool_width)
+        Layer.__init__(self, name=name)
+
+        self.inputs = layer.outputs # format should be [Batch, height, weight, channels]
+        num_joints = points.shape[0]
+
+        print ("  [TL] Bilinear Interpolation Layer %s" % (self.name))
+
+        points_x = points[:,0]
+        ponits_y = points[:,1]
+
+        xs = points_x / float(down_sample) # x_axis, batch
+        ys = ponits_y / float(down_sample) # y_axis, batch
+
+        x1s = np.ndarray.astype(xs, dtype="int32")
+        x2s = x1s + 1
+        y1s = np.ndarray.astype(ys, dtype="int32")
+        y2s = y1s + 1
+
+        outputs = []
+        for j in range(num_joints):
+            x = xs[j] # x_axis, sample
+            y = ys[j] # x_axis, sample
+            x1 = x1s[j]
+            x2 = x2s[j]
+            y1 = y1s[j]
+            y2 = y2s[j]
+
+            Q11 = self.inputs[:, x1, y1]  # consider batch form, first ":" is for batch manipulation
+            Q12 = self.inputs[:, x1, y2]
+            Q21 = self.inputs[:, x2, y1]
+            Q22 = self.inputs[:, x2, y2]
+
+
+            R1 = ((x2 - x) / (x2 - x1)) * Q11 + ((x - x1) / (x2 - x1)) * Q21
+            R2 = ((x2 - x) / (x2 - x1)) * Q12 + ((x - x1) / (x2 - x1)) * Q22
+            P = ((y2 - y) / (y2 - y1)) * R1 + ((y - y1) / (y2 - y1)) * R2
+
+            outputs.append(P)
+
+        self.outputs = tf.transpose(tf.stack(outputs), [1,0,2])
 
         self.all_layers = list(layer.all_layers)
         self.all_params = list(layer.all_params)
         self.all_drop = dict(layer.all_drop)
         self.all_layers.extend( [self.outputs] )
-
 
 
 
