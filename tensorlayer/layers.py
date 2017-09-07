@@ -12,6 +12,7 @@ from . import cost
 from . import iterate
 from . import ops
 import numpy as np
+import numpy.matlib
 from six.moves import xrange
 import random, warnings
 import copy
@@ -6075,6 +6076,89 @@ class Bilinear_Interpolation_with_Joints(Layer):
         self.all_drop = dict(layer.all_drop)
         self.all_layers.extend( [self.outputs] )
 
+class test_Bilinear_Interpolation_with_Joints(Layer):
+    """
+    Bilinear interpolation layer
+    bilinear interpolate (x,y) by its adjacent points, values are from last layer's feature map
+    input:
+        featuremap: the feature map used to do interpolation
+        x: point's x coordinate to be interpolated, note: in original image coordinate
+        y: point's y coordinate to be interpolated, note: in original image coordinate
+        down_sample: down_sampling layers num, default is 8, as is after conv4 before pool4 for VGG16
+        points: four points used to interpolate
+    output:
+        bilinear interpolated value for (x,y) based on four points
+    """
 
+    def __init__(
+            self,
+            # featuremap = None,
+            layer=None,
+            points=None,  # ndarray, all joints RGB points
+            down_sample=8,  # default downsampling layers, that is, after conv4 before pool4 for VGG16
+            # points = None,
+            name='bilinear_interpolation_layer'
+    ):
+        Layer.__init__(self, name=name)
+
+        self.inputs = layer.outputs  # format should be [Batch, height, weight, channels]
+
+        print("  [TL] Bilinear Interpolation Layer %s" % (self.name))
+
+        N, h, w, c = self.inputs.get_shape().as_list()
+        _, n_j, _ = points.get_shape().as_list() # N, n_j(num_joints), 2
+
+        points = tf.reshape(points, shape=[N*n_j, 2])
+
+        idx = np.matlib.repmat(range(N), n_j, 1)
+        idx = idx.flatten('F')
+        idx = np.expand_dims(idx, axis=1)
+        idx = tf.stack(idx)
+        idx = tf.cast(idx, dtype="int32")
+        points = tf.cast(points, dtype="int32")
+
+        points = tf.concat([idx, points], axis=1)
+
+        self.outputs = tf.gather_nd(self.inputs, points)
+        self.outputs = tf.reshape(self.outputs, shape=[N, n_j, c]) # reshape back
+
+        self.all_layers = list(layer.all_layers)
+        self.all_params = list(layer.all_params)
+        self.all_drop = dict(layer.all_drop)
+        self.all_layers.extend([self.outputs])
+
+#class TimeWrapperLayer(Layer):
+#    # Wrapper layer for any input layer #    # help build input to RNN at each time step
+#    # when without this layer, data is confined to B x T x input_data.shape
+#    # after this layer, data is B x T x desired_input_to_RNN.shape
+#    def __init__(
+#            self,
+#            layer = None,
+#            name = "time_wrapper_layer"
+#            ):
+#        Layer.__init__(self, name=name)
+#        self.inputs = layers.outputs
+#        print ("  [TL] Time Wrapper Layer %s" % (self.name))
+#
+#
+#        assert self.inputs.shape >= 3, "Error, input shall be at least BxTxD to use TimeWrapperLayer"
+#
+#        len_shape = len(self.inputs.shape)
+#
+#        #outputs = tf.reshape(self.inputs, shape=
+#
+#
+#
+#
+#
+#
+#
+#
+#        #self.outputs = self.inputs
+#
+#        self.all_layers = list(layer.all_layers)
+#        self.all_params = list(layer.all_params)
+#        self.all_drop = dict(layer.all_drop)
+#        self.all_layers.extend( [self.outputs] )
 
 #
