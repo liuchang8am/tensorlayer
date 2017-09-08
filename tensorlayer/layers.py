@@ -4952,35 +4952,6 @@ class PeekySeq2Seq(Layer):
         print("  [TL] PeekySeq2seq %s: n_hidden:%d cell_fn:%s dropout:%s n_layer:%d" %
               (self.name, n_hidden, cell_fn.__name__, dropout, n_layer))
 
-class AttentionSeq2Seq(Layer):
-    """
-    Waiting for contribution.
-    The :class:`AttentionSeq2Seq` class, see `Model <https://camo.githubusercontent.com/0e2e4e5fb2dd47846c2fe027737a5df5e711df1b/687474703a2f2f6936342e74696e797069632e636f6d2f6132727733642e706e67>`_
-    and `Neural Machine Translation by Jointly Learning to Align and Translate <https://arxiv.org/pdf/1409.0473v6.pdf>`_ .
-    """
-    def __init__(
-        self,
-        net_encode_in = None,
-        net_decode_in = None,
-        cell_fn = None,#tf.nn.rnn_cell.LSTMCell,
-        cell_init_args = {'state_is_tuple':True},
-        n_hidden = 256,
-        initializer = tf.random_uniform_initializer(-0.1, 0.1),
-        in_sequence_length = None,
-        out_sequence_length = None,
-        initial_state = None,
-        dropout = None,
-        n_layer = 1,
-        # return_last = False,
-        return_seq_2d = False,
-        name = 'attention_seq2seq',
-    ):
-        Layer.__init__(self, name=name)
-        if cell_fn is None:
-            raise Exception("Please put in cell_fn")
-        # self.inputs = layer.outputs
-        print("  [TL] PeekySeq2seq %s: n_hidden:%d cell_fn:%s dropout:%s n_layer:%d" %
-              (self.name, n_hidden, cell_fn.__name__, dropout, n_layer))
 
 ## Shape layer
 class FlattenLayer(Layer):
@@ -6007,76 +5978,8 @@ class MaxoutLayer(Layer):
 #        self.all_drop = dict(layer.all_drop)
 #        self.all_layers.extend( [self.outputs] )
 
+
 class Bilinear_Interpolation_with_Joints(Layer):
-    """
-    Bilinear interpolation layer
-    bilinear interpolate (x,y) by its adjacent points, values are from last layer's feature map
-    input:
-        featuremap: the feature map used to do interpolation
-        x: point's x coordinate to be interpolated, note: in original image coordinate
-        y: point's y coordinate to be interpolated, note: in original image coordinate
-        down_sample: down_sampling layers num, default is 8, as is after conv4 before pool4 for VGG16
-        points: four points used to interpolate
-    output:
-        bilinear interpolated value for (x,y) based on four points
-    """
-    def __init__(
-            self,
-            #featuremap = None,
-            layer = None,
-            points = None, # ndarray, all joints RGB points
-            down_sample = 8, # default downsampling layers, that is, after conv4 before pool4 for VGG16
-            #points = None,
-            name = 'bilinear_interpolation_layer'
-            ):
-
-        Layer.__init__(self, name=name)
-
-        self.inputs = layer.outputs # format should be [Batch, height, weight, channels]
-        num_joints = points.shape[0]
-
-        print ("  [TL] Bilinear Interpolation Layer %s" % (self.name))
-
-        points_x = points[:,0]
-        ponits_y = points[:,1]
-
-        xs = points_x / float(down_sample) # x_axis, batch
-        ys = ponits_y / float(down_sample) # y_axis, batch
-
-        x1s = np.ndarray.astype(xs, dtype="int32")
-        x2s = x1s + 1
-        y1s = np.ndarray.astype(ys, dtype="int32")
-        y2s = y1s + 1
-
-        outputs = []
-        for j in range(num_joints):
-            x = xs[j] # x_axis, sample
-            y = ys[j] # x_axis, sample
-            x1 = x1s[j]
-            x2 = x2s[j]
-            y1 = y1s[j]
-            y2 = y2s[j]
-
-            Q11 = self.inputs[:, x1, y1]  # consider batch form, first ":" is for batch manipulation
-            Q12 = self.inputs[:, x1, y2]
-            Q21 = self.inputs[:, x2, y1]
-            Q22 = self.inputs[:, x2, y2]
-
-
-            R1 = ((x2 - x) / (x2 - x1)) * Q11 + ((x - x1) / (x2 - x1)) * Q21
-            R2 = ((x2 - x) / (x2 - x1)) * Q12 + ((x - x1) / (x2 - x1)) * Q22
-            P = ((y2 - y) / (y2 - y1)) * R1 + ((y - y1) / (y2 - y1)) * R2
-
-            outputs.append(P)
-
-        self.outputs = tf.transpose(tf.stack(outputs), [1,0,2])
-
-        self.all_layers = list(layer.all_layers)
-        self.all_params = list(layer.all_params)
-        self.all_drop = dict(layer.all_drop)
-        self.all_layers.extend( [self.outputs] )
-
-class test_Bilinear_Interpolation_with_Joints(Layer):
     """
     Bilinear interpolation layer
     bilinear interpolate (x,y) by its adjacent points, values are from last layer's feature map
@@ -6119,6 +6022,7 @@ class test_Bilinear_Interpolation_with_Joints(Layer):
 
         points = tf.concat([idx, points], axis=1)
 
+        # TODO: add bilinear interpolation
         self.outputs = tf.gather_nd(self.inputs, points)
         self.outputs = tf.reshape(self.outputs, shape=[N, n_j, c]) # reshape back
 
@@ -6127,38 +6031,65 @@ class test_Bilinear_Interpolation_with_Joints(Layer):
         self.all_drop = dict(layer.all_drop)
         self.all_layers.extend([self.outputs])
 
-#class TimeWrapperLayer(Layer):
-#    # Wrapper layer for any input layer #    # help build input to RNN at each time step
-#    # when without this layer, data is confined to B x T x input_data.shape
-#    # after this layer, data is B x T x desired_input_to_RNN.shape
-#    def __init__(
-#            self,
-#            layer = None,
-#            name = "time_wrapper_layer"
-#            ):
-#        Layer.__init__(self, name=name)
-#        self.inputs = layers.outputs
-#        print ("  [TL] Time Wrapper Layer %s" % (self.name))
-#
-#
-#        assert self.inputs.shape >= 3, "Error, input shall be at least BxTxD to use TimeWrapperLayer"
-#
-#        len_shape = len(self.inputs.shape)
-#
-#        #outputs = tf.reshape(self.inputs, shape=
-#
-#
-#
-#
-#
-#
-#
-#
-#        #self.outputs = self.inputs
-#
-#        self.all_layers = list(layer.all_layers)
-#        self.all_params = list(layer.all_params)
-#        self.all_drop = dict(layer.all_drop)
-#        self.all_layers.extend( [self.outputs] )
+
+class Spatial_Attention_over_Joints(Layer):
+    """
+    Spatial attention layer for joints
+    Given joints representation, return one final vector for all joints
+    input:
+        joints representation in feature map level, of shape [N, n_j, D]
+        where N is num samples (N = B x T, from previous reshape layer) n_j is joints num, D is feature size
+    output:
+        one vector to represent all joints, of shape [N, T, D]
+    """
+
+    def __init__(
+            self,
+            layer = None,
+            ):
+
+        Layer.__init__(self, name=name)
+
+        self.inputs = layer.outputs # shape [N, n_j, D]
+
+
+
+
+        #self.outputs = ?
+
+        self.all_layers = list(layer.all_layers)
+        self.all_params = list(layer.all_params)
+        self.all_drop = dict(layer.all_drop)
+        self.all_layers.extend([self.outputs])
+
+
+class AttentionSeq2Seq(Layer):
+    """
+    The :class:`AttentionSeq2Seq` class, see `Model <https://camo.githubusercontent.com/0e2e4e5fb2dd47846c2fe027737a5df5e711df1b/687474703a2f2f6936342e74696e797069632e636f6d2f6132727733642e706e67>`_
+    and `Neural Machine Translation by Jointly Learning to Align and Translate <https://arxiv.org/pdf/1409.0473v6.pdf>`_ .
+    """
+    def __init__(
+        self,
+        net_encode_in = None,
+        net_decode_in = None,
+        cell_fn = None,#tf.nn.rnn_cell.LSTMCell,
+        cell_init_args = {'state_is_tuple':True},
+        n_hidden = 256,
+        initializer = tf.random_uniform_initializer(-0.1, 0.1),
+        in_sequence_length = None,
+        out_sequence_length = None,
+        initial_state = None,
+        dropout = None,
+        n_layer = 1,
+        # return_last = False,
+        return_seq_2d = False,
+        name = 'attention_seq2seq',
+    ):
+        Layer.__init__(self, name=name)
+        if cell_fn is None:
+            raise Exception("Please put in cell_fn")
+        # self.inputs = layer.outputs
+        print("  [TL] PeekySeq2seq %s: n_hidden:%d cell_fn:%s dropout:%s n_layer:%d" %
+              (self.name, n_hidden, cell_fn.__name__, dropout, n_layer))
 
 #

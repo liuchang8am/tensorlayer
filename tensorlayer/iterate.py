@@ -53,6 +53,36 @@ def minibatches(inputs=None, targets=None, batch_size=None, shuffle=False):
             excerpt = slice(start_idx, start_idx + batch_size)
         yield inputs[excerpt], targets[excerpt]
 
+def minibatches_multiple_inputs(inputs=None, targets=None, batch_size=None, shuffle=False):
+    """Generate a generator that input a group of example in numpy.array and
+    their labels, return the examples and labels by the given batchsize.
+
+    Parameters
+    ----------
+    inputs : dict of multiple numpy.ndarray
+    targets : numpy.array
+        (y) The labels of inputs, every row is a example.
+    batch_size : int
+        The batch size.
+    shuffle : boolean
+        Indicating whether to use a shuffling queue, shuffle the dataset before return.
+
+    """
+
+    num_sample = len(inputs[0])
+
+    assert num_sample == len(targets)
+
+    if shuffle:
+        indices = np.arange(num_sample)
+        np.random.shuffle(indices)
+    for start_idx in range(0, num_sample - batch_size + 1, batch_size):
+        if shuffle:
+            excerpt = indices[start_idx:start_idx + batch_size]
+        else:
+            excerpt = slice(start_idx, start_idx + batch_size)
+        yield [inputs[0][excerpt], inputs[1][excerpt], inputs[2][excerpt], inputs[3][excerpt]]
+
 def seq_minibatches(inputs, targets, batch_size, seq_length, stride=1):
     """Generate a generator that return a batch of sequence inputs and targets.
     If ``batch_size = 100, seq_length = 5``, one return will have ``500`` rows (examples).
