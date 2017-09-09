@@ -6046,21 +6046,37 @@ class Spatial_Attention_over_Joints(Layer):
     def __init__(
             self,
             layer = None,
+            name = "SPAT_layer",
+            V_init = tf.truncated_normal_initializer(stddev=0.1),
+            W_init = tf.truncated_normal_initializer(stddev=0.1)
             ):
 
         Layer.__init__(self, name=name)
 
         self.inputs = layer.outputs # shape [N, n_j, D]
 
+        N, n_j, D = self.inputs.get_shape().as_list()
 
+        # reshape to [n_j, N, D]
+        self.inputs = tf.reshape(self.inputs, shape=[N*n_j, D])
 
+        with tf.variable_scope(name) as scope:
+            V = tf.get_variable(name="V", shape=[D,1], dtype="float32")
+            W = tf.get_variable(name="W", shape=[D,D], dtype="float32")
+            U = tf.matmul(tf.tanh(tf.matmul(self.inputs, W)),V)
+            A = tf.nn.softmax(U)
+            A = tf.tile(A, [1, D])
+            self.outputs = tf.multiply(A, self.inputs)
 
-        #self.outputs = ?
+        self.outputs = tf.reshape(self.outputs, [n_j, N, D])
+        self.outputs = tf.reduce_sum(self.outputs, axis=0)
+
 
         self.all_layers = list(layer.all_layers)
         self.all_params = list(layer.all_params)
         self.all_drop = dict(layer.all_drop)
         self.all_layers.extend([self.outputs])
+        self.all_params.extend([V, W])
 
 
 class AttentionSeq2Seq(Layer):
